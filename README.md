@@ -1,5 +1,13 @@
 # DLIT
 
+Deep Learning training process visualization using Information Theory (Mutual Information, KL Divergence).
+- fully connected network
+- CNN
+- Autoencoders
+
+
+
+
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 1.6.7.
 
 ## Development server
