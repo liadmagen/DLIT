@@ -11,16 +11,6 @@ import {NDArrayMath} from 'deeplearn/dist/math/math';
 
 // result.data().then(data => console.log(data));
 
-/**
- * By default, creates a model with 4 hidden layers:
- * 64 nodes
- * 32 nodes
- * 16 nodes
- * 10 nodes
- * RELU, Softmax at the end
- * loss function: euclidean distance
- */
-
 export class Model {
   readonly IMAGE_SIZE = 28;
   readonly IMAGE_PIXELS = this.IMAGE_SIZE * this.IMAGE_SIZE;
@@ -57,13 +47,22 @@ export class Model {
   }
 
   createFullyConnectedLayer(
-      inputLayer: dl.Tensor, layerIndex: number,
-      sizeOfThisLayer: number, useBias: boolean = true): Tensor {
+      inputLayer: dl.Tensor, layerIndex: number, sizeOfThisLayer: number,
+      useBias: boolean = true): Tensor {
     return this.graph.layers.dense(
         'fully_connected_' + layerIndex, inputLayer, sizeOfThisLayer,
         (x) => this.graph.relu(x), useBias);
   }
 
+  /**
+ * By default, creates a model with 4 hidden layers:
+ * 64 nodes
+ * 32 nodes
+ * 16 nodes
+ * 10 nodes
+ * RELU, Softmax at the end
+ * loss function: euclidean distance
+ */
   buildGraph() {
     [this.inputTensor, this.targetTensor] =
         this.placeholderInputs(this.BATCH_SIZE);
@@ -81,8 +80,7 @@ export class Model {
     fullyConnectedLayer =
         this.createFullyConnectedLayer(fullyConnectedLayer, 3, 10);
 
-    this.predictionTensor =
-        this.graph.softmax(fullyConnectedLayer);
+    this.predictionTensor = this.graph.softmax(fullyConnectedLayer);
 
     this.costTensor =
         this.graph.meanSquaredCost(this.targetTensor, this.predictionTensor);
@@ -113,7 +111,7 @@ export class Model {
     return canvas;
   }
 
-  trainWithSGD() {
+  trainBatch() {
     const learningRate =
         this.initialLearningRate * Math.pow(0.85, Math.floor(step / 42));
     (this.optimizer as SGDOptimizer).setLearningRate(learningRate);
@@ -140,6 +138,11 @@ export class Model {
       {tensor: this.inputTensor, data: inputProvider},
       {tensor: this.targetTensor, data: targetProvider}
     ];
+
+    const epochs = 100;
+    for (let step = 1; step < epochs; step++) {
+      this.trainBatch();
+    }
   }
 
   /*
