@@ -7,6 +7,9 @@ Deep Learning training process visualization using Information Theory (Mutual In
 
 
 
+As I'm not so happy with using Angular for this project, I'll push a new repository using web-components, to keep the code cleaner and keep the focus on the models, rather on the code architecture.
+
+
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 1.6.7.
 
