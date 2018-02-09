@@ -1,7 +1,7 @@
-import * as dl from 'deeplearn';
-import {Graph, Optimizer, Session, SGDOptimizer, Tensor} from 'deeplearn';
-import {InCPUMemoryShuffledInputProviderBuilder} from 'deeplearn/dist/data/input_provider';
-import {NDArrayMath} from 'deeplearn/dist/math/math';
+import {Array1D, CostReduction, Graph, Optimizer, Session, SGDOptimizer, Tensor} from 'deeplearn';
+import {InCPUMemoryShuffledInputProviderBuilder, NDArrayMath, NDArrayMathGPU, ENV} from 'deeplearn';
+import {XhrDataset, Xh} from 'deeplearn';
+import {MnistImageProcssing} from './mnist-image-processing';
 
 // const math = ENV.math;
 // const a = Array1D.new([1, 2, 3]);
@@ -11,13 +11,14 @@ import {NDArrayMath} from 'deeplearn/dist/math/math';
 
 // result.data().then(data => console.log(data));
 
-export class Model {
+export class FullyConnectedModel {
   readonly IMAGE_SIZE = 28;
   readonly IMAGE_PIXELS = this.IMAGE_SIZE * this.IMAGE_SIZE;
   readonly NUM_CLASSES = 10;
   readonly BATCH_SIZE = 64;
 
-  math: NDArrayMath = dl.ENV.math;
+  // math = new NDArrayMathGPU;
+  math: NDArrayMath = ENV.math;
   graph: Graph;
   initialLearningRate: number;
   optimizer: Optimizer;
@@ -37,6 +38,12 @@ export class Model {
     this.optimizer = new SGDOptimizer(this.initialLearningRate);
   }
 
+  loadTrainngData(): Tensor[][] {
+    let image = new MnistImageProcssing();
+    image.loadMnistImage();
+
+  }
+
   placeholderInputs(batchSize) {
     this.inputTensor =
         this.graph.placeholder('input MNIST', [batchSize, this.IMAGE_PIXELS]);
@@ -47,23 +54,25 @@ export class Model {
   }
 
   createFullyConnectedLayer(
-      inputLayer: dl.Tensor, layerIndex: number, sizeOfThisLayer: number,
+      inputLayer: Tensor, layerIndex: number, sizeOfThisLayer: number,
       useBias: boolean = true): Tensor {
+          // dense is already doing the creation and multiplication of the nodes with the inptu layer + bias
     return this.graph.layers.dense(
-        'fully_connected_' + layerIndex, inputLayer, sizeOfThisLayer,
+        'fully_connected_${layerIndex}', inputLayer, sizeOfThisLayer,
         (x) => this.graph.relu(x), useBias);
   }
 
   /**
- * By default, creates a model with 4 hidden layers:
- * 64 nodes
- * 32 nodes
- * 16 nodes
- * 10 nodes
- * RELU, Softmax at the end
- * loss function: euclidean distance
- */
-  buildGraph() {
+   * By default, creates a computation graph model with 4 hidden layers:
+   * 1st: 64 nodes
+   * 2nd: 32 nodes
+   * 3rd: 16 nodes
+   * 4th: 10 nodes
+   * all with RELU activation function
+   * and a Softmax at the end to emphasize the predicted class
+   * loss function: euclidean distance
+   */
+  buildComputationGraph() {
     [this.inputTensor, this.targetTensor] =
         this.placeholderInputs(this.BATCH_SIZE);
 
@@ -90,28 +99,28 @@ export class Model {
     return this.session;
   }
 
-  renderMnistImage(array: dl.Array1D) {
-    const width = 28;
-    const height = 28;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    const float32Array = array.dataSync();
-    const imageData = ctx.createImageData(width, height);
-    for (let i = 0; i < float32Array.length; ++i) {
-      const j = i * 4;
-      const value = Math.round(float32Array[i] * 255);
-      imageData.data[j + 0] = value;
-      imageData.data[j + 1] = value;
-      imageData.data[j + 2] = value;
-      imageData.data[j + 3] = 255;
-    }
-    ctx.putImageData(imageData, 0, 0);
-    return canvas;
+  normalizeVector(image) {
+    return image.map(v => v / 255);
   }
 
-  trainBatch() {
+  prepareTrainingSet(trainnsgSet) {
+    this.math.scope(() => {
+      const {rawInputs, rawTargets} = trainnsgSet;
+
+      const inputArray =
+          rawInputs.map(v => Array1D.new(this.normalizeVector(v)));
+      const targetArray = rawTargets.map(v => Array1D.new(v));
+
+      const shuffledInputProviderBuilder =
+          new InCPUMemoryShuffledInputProviderBuilder(
+              [inputArray, targetArray]);
+
+      const [inputProvider, targetProvider] =
+          shuffledInputProviderBuilder.getInputProviders();
+    });
+  }
+
+  trainBatch(step, computeCost) {
     const learningRate =
         this.initialLearningRate * Math.pow(0.85, Math.floor(step / 42));
     (this.optimizer as SGDOptimizer).setLearningRate(learningRate);
@@ -120,9 +129,11 @@ export class Model {
     this.math.scope(() => {
       const cost = this.session.train(
           this.costTensor, this.feedEntries, this.BATCH_SIZE, this.optimizer,
-          dl.CostReduction.MEAN);
+          computeCost ? CostReduction.MEAN : CostReduction.NONE);
 
-      costValue = cost.get();
+      if (computeCost) {
+        costValue = cost.get();
+      }
     });
 
     return costValue;
@@ -143,6 +154,11 @@ export class Model {
     for (let step = 1; step < epochs; step++) {
       this.trainBatch();
     }
+  }
+
+  runTrain() {
+    let trainingSet = this.this.buildGraph();
+    this.prepareTrainingSet(trainingSet);
   }
 
   /*
