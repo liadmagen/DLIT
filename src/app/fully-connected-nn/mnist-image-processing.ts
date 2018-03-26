@@ -1,5 +1,6 @@
 import {Array1D} from 'deeplearn';
-import {XhrDataset, XhrDatasetConfig} from 'deeplearn';
+import {XhrDataset} from 'deeplearn';
+import * as dl from 'deeplearn';
 
 /**
  * A helper class for loading, displaying the MNIST digits
@@ -33,6 +34,8 @@ export class MnistImageProcssing {
   }
 
   loadMnistImage() {
-    let xhr = new XhrDataset()
+    let xhrConf = dl.getXhrDatasetConfig();
+    let xhr = new XhrDataset(xhrConf);
+
   }
 }

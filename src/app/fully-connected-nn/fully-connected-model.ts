@@ -1,6 +1,6 @@
 import {Array1D, CostReduction, Graph, Optimizer, Session, SGDOptimizer, Tensor} from 'deeplearn';
 import {InCPUMemoryShuffledInputProviderBuilder, NDArrayMath, NDArrayMathGPU, ENV} from 'deeplearn';
-import {XhrDataset, Xh} from 'deeplearn';
+import {XhrDataset} from 'deeplearn';
 import {MnistImageProcssing} from './mnist-image-processing';
 
 // const math = ENV.math;
